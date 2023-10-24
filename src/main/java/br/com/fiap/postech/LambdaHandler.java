@@ -1,5 +1,6 @@
 package br.com.fiap.postech;
 
+import java.util.Collection;
 import java.util.Map;
 import javax.crypto.SecretKey;
 
@@ -22,7 +23,18 @@ public class LambdaHandler implements RequestHandler<APIGatewayProxyRequestEvent
     public ResponseLambda handleRequest(final APIGatewayProxyRequestEvent input, final Context context) {
 
         Map<String, String> headers = input.getHeaders();
-        String authorizationToken = headers.get("authorizationToken");
+        //String authorizationToken = headers.get("Authorization");
+
+
+        List<String> headersValues = headers.values().stream().toList();
+        String authorizationToken = headersValues.get(1);
+
+        System.out.println("list=>>> " + headersValues);
+        System.out.println("====================");
+        System.out.println("TOKEN=>>> " + authorizationToken);
+        System.out.println("====================");
+        System.out.println(headers.values());
+        System.out.println("====================");
 
         String base64Secret = "Y2hhdmUtc2VjcmV0YS1sYW1iZGEtZmFzdC1mb29kLWZpYXAtcG9zdGVjaC10dXJtYS1kZS1hcnF1aXRldHVyYS1kZS1zb2Z0d2FyZQo=";
         byte[] keyBytes = Decoders.BASE64.decode(base64Secret);
@@ -36,7 +48,7 @@ public class LambdaHandler implements RequestHandler<APIGatewayProxyRequestEvent
         APIGatewayProxyRequestEvent.RequestIdentity identity = proxyContext.getIdentity();
 
         String arn = String.format("arn:aws:execute-api:%s:%s:%s/%s/%s/%s",System.getenv("AWS_REGION"), proxyContext.getAccountId(),
-                proxyContext.getApiId(), "dev", proxyContext.getHttpMethod(), "teste");
+                proxyContext.getApiId(), "dev", proxyContext.getHttpMethod(), "users");
 
         Statement statement = Statement.builder().effect(auth).resource(arn).build();
         List<Statement> listStatements = new ArrayList<>();
