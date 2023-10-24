@@ -20,6 +20,10 @@ import java.util.List;
  */
 public class LambdaHandler implements RequestHandler<APIGatewayProxyRequestEvent, ResponseLambda> {
 
+    String base64Secret = "Y2hhdmUtc2VjcmV0YS1sYW1iZGEtZmFzdC1mb29kLWZpYXAtcG9zdGVjaC10dXJtYS1kZS1hcnF1aXRldHVyYS1kZS1zb2Z0d2FyZQo=";
+    byte[] keyBytes = Decoders.BASE64.decode(base64Secret);
+    private final SecretKey CHAVE = Keys.hmacShaKeyFor(keyBytes);
+
     public ResponseLambda handleRequest(final APIGatewayProxyRequestEvent input, final Context context) {
 
         String authorizationToken = "";
@@ -32,14 +36,6 @@ public class LambdaHandler implements RequestHandler<APIGatewayProxyRequestEvent
             authorizationToken = headersValues.get(1);
         }
 
-        //String authorizationToken = headers.get("Authorization");
-        //List<String> headersValues = headers.values().stream().toList();
-        //String authorizationToken = headersValues.get(1);
-
-
-        String base64Secret = "Y2hhdmUtc2VjcmV0YS1sYW1iZGEtZmFzdC1mb29kLWZpYXAtcG9zdGVjaC10dXJtYS1kZS1hcnF1aXRldHVyYS1kZS1zb2Z0d2FyZQo=";
-        byte[] keyBytes = Decoders.BASE64.decode(base64Secret);
-        SecretKey CHAVE = Keys.hmacShaKeyFor(keyBytes);
         Jwts.parserBuilder().setSigningKey(CHAVE).build().parseClaimsJws(authorizationToken);
 
         String auth = "Deny";
