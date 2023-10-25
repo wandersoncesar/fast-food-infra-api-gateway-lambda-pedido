@@ -4,13 +4,17 @@ import java.util.Map;
 import javax.crypto.SecretKey;
 
 import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-//import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +30,8 @@ public class LambdaHandler implements RequestHandler<APIGatewayProxyRequestEvent
 
     public ResponseLambda handleRequest(final APIGatewayProxyRequestEvent input, final Context context) {
 
+        LambdaLogger logger = context.getLogger();
+
         String authorizationToken = "";
         Map<String, String> headers = input.getHeaders();
 
@@ -36,23 +42,57 @@ public class LambdaHandler implements RequestHandler<APIGatewayProxyRequestEvent
             authorizationToken = headersValues.get(1);
         }
 
-        Jwts.parserBuilder().setSigningKey(CHAVE).build().parseClaimsJws(authorizationToken);
-
         String auth = "Deny";
-        if (authorizationToken != null) auth = "Allow";
+
+        if (validateToken(authorizationToken, logger)) {
+            auth = "Allow";
+        }
 
         APIGatewayProxyRequestEvent.ProxyRequestContext proxyContext = input.getRequestContext();
         APIGatewayProxyRequestEvent.RequestIdentity identity = proxyContext.getIdentity();
 
-        String arn = String.format("arn:aws:execute-api:%s:%s:%s/%s/%s/%s",System.getenv("AWS_REGION"), proxyContext.getAccountId(),
-                proxyContext.getApiId(), "dev", proxyContext.getHttpMethod(), "users");
+        String arn = String.format(
+                "arn:aws:execute-api:%s:%s:%s/%s/%s/%s",
+                System.getenv("AWS_REGION"),
+                proxyContext.getAccountId(),
+                proxyContext.getApiId(), "dev",
+                proxyContext.getHttpMethod(), "*"
+        );
 
-        Statement statement = Statement.builder().effect(auth).resource(arn).build();
-        List<Statement> listStatements = new ArrayList<>();
-        listStatements.add(statement);
-        PolicyDocument policyDocument = PolicyDocument.builder().statements(listStatements)
+        Statement statement = Statement.builder()
+                .effect(auth)
+                .resource(arn)
                 .build();
 
-        return ResponseLambda.builder().principalId(identity.getAccountId()).policyDocument(policyDocument).build();
+        List<Statement> listStatements = new ArrayList<>();
+
+        listStatements.add(statement);
+
+        PolicyDocument policyDocument = PolicyDocument.builder()
+                .statements(listStatements)
+                .build();
+
+        return ResponseLambda.builder()
+                .principalId(identity.getAccountId())
+                .policyDocument(policyDocument)
+                .build();
+    }
+
+    public boolean validateToken(String token, LambdaLogger logger) {
+        try {
+            Jwts.parser().setSigningKey(CHAVE).parseClaimsJws(token);
+            return true;
+        } catch (SignatureException e) {
+            logger.log("Invalid JWT signature.");
+        } catch (MalformedJwtException e) {
+            logger.log("Invalid JWT token.");
+        } catch (ExpiredJwtException e) {
+            logger.log("Expired JWT token.");
+        } catch (UnsupportedJwtException e) {
+            logger.log("Unsupported JWT token.");
+        } catch (IllegalArgumentException e) {
+            logger.log("JWT token compact of handler are invalid trace: {}");
+        }
+        return false;
     }
 }
