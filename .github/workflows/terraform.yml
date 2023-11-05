@@ -1,55 +1,73 @@
-name: 'Terraform'
+name: Terraform API Gateway + Lambda
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-
-permissions:
-  contents: read
+    branches:
+      - main
+#on: workflow_dispatch
 
 env:
+ # verbosity setting for Terraform logs--test
+ TF_LOG: INFO
+ # Credentials for deployment to AWS
  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
-  terraform:
-    name: 'Terraform'
+  iam_deployment:
+    name: "Deploy ECS"
     runs-on: ubuntu-latest
-
-    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
-      run:
-        shell: bash
-        working-directory: ./infra
-
+     run:
+       shell: bash
+       working-directory: ./infra
+    
     steps:
-    # Checkout the repository to the GitHub Actions runner
-    - name: Checkout
+    - name: Checkout the repository to the runner
       uses: actions/checkout@v3
 
-    # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v1
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v3
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
-    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+    - name: Test configuration of AWS CLI
+      run: |
+        aws --version
+        aws configure list | grep region | awk '{print $2}'
+
+    - name: Setup Terraform with specified version on the runner
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.5.5
+
     - name: Terraform Init
       run: terraform init
 
-    # Checks that all Terraform configuration files adhere to a canonical format
-    # - name: Terraform Format
-    #   run: terraform fmt -check
+    - name: Terraform Validate
+      run: terraform validate
 
-    # Generates an execution plan for Terraform
     - name: Terraform Plan
-      run: terraform plan -input=false
+      id: plan
+      run: terraform plan -var-file=terraform.tfvars -input=false -out=tf-plan
+      continue-on-error: true
 
-      # On push to "main", build or change infrastructure according to Terraform configuration files
-      # Note: It is recommended to set up a required "strict" status check in your repository for "Terraform Cloud". See the documentation on "strict" required status checks for more information: https://help.github.com/en/github/administering-a-repository/types-of-required-status-checks
+    - name: Check for Changes in Terraform Plan
+      id: plan_changes
+      run: echo "::set-output name=changed::$(terraform show -json tf-plan | jq '.resource_changes | length > 0')"
+
     - name: Terraform Apply
-      if: github.ref == 'refs/heads/"main"' && github.event_name == 'push'
-      run: terraform apply -auto-approve -input=false
+      run: terraform apply -var-file=terraform.tfvars -auto-approve
+
+    - name: Store Outputs
+      id: terraform_outputs
+      run: echo "::set-output name=outputs::$(terraform output -json)"
+
+    - name: Terraform Plan Status
+      if: steps.plan.outcome == 'failure'
+      run: exit 1
+
+    - name: Clean up
+      run: rm -f tf-plan
