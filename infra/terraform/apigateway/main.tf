@@ -1,6 +1,6 @@
 resource "aws_api_gateway_rest_api" "api_fast_food" {
-  name        = "MyAPI"
-  description = "Minha API Gateway"
+  name        = "API Gateway fast-food"
+  description = "API Gateway para API REST fast-food"
 }
 
 # /cliente
@@ -375,15 +375,9 @@ resource "aws_api_gateway_integration" "produto_id" {
   uri                     = "https://api.github.com/users/FelipeFreitasGit/repos"
 }
 
-resource "aws_api_gateway_resource" "deleta_produto_id" {
-  rest_api_id = aws_api_gateway_rest_api.api_fast_food.id
-  parent_id   = aws_api_gateway_resource.produto.id
-  path_part   = "{id+}"
-}
-
 resource "aws_api_gateway_method" "deleta_produto_id" {
   rest_api_id = aws_api_gateway_rest_api.api_fast_food.id
-  resource_id = aws_api_gateway_resource.deleta_produto_id.id
+  resource_id = aws_api_gateway_resource.produto_id.id
   http_method = "DELETE"
   authorization = "CUSTOM"
   authorizer_id = aws_api_gateway_authorizer.custom.id
@@ -391,7 +385,7 @@ resource "aws_api_gateway_method" "deleta_produto_id" {
 
 resource "aws_api_gateway_integration" "deleta_produto_id" {
   rest_api_id             = aws_api_gateway_rest_api.api_fast_food.id
-  resource_id             = aws_api_gateway_resource.deleta_produto_id.id
+  resource_id             = aws_api_gateway_resource.produto_id.id
   http_method             = aws_api_gateway_method.deleta_produto_id.http_method
   integration_http_method = "DELETE"
   type                    = "HTTP_PROXY"
