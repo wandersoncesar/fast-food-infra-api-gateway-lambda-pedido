@@ -79,4 +79,3 @@ terraform.rc
 
 .terraform/
 .terraform.*
-terraform.tfs*

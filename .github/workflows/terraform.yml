@@ -15,7 +15,7 @@ env:
 
 jobs:
   iam_deployment:
-    name: "Deploy ECS"
+    name: "Deploy API Gateway + Lambda"
     runs-on: ubuntu-latest
     defaults:
      run:
