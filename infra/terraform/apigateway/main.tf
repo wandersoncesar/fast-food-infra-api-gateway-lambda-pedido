@@ -1,5 +1,5 @@
 resource "aws_api_gateway_rest_api" "api_fast_food" {
-  name        = "API Gateway fast-food"
+  name        = "API Gateway fast-food - cliente"
   description = "API Gateway para API REST fast-food"
 }
 
