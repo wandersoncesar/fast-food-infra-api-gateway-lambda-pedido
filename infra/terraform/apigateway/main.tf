@@ -84,3 +84,14 @@ resource "aws_api_gateway_authorizer" "custom" {
   identity_source                  = "method.request.header.Authorization"
   authorizer_result_ttl_in_seconds = 0
 }
+
+resource "aws_api_gateway_deployment" "api_fast_food_deployment" {
+  rest_api_id = aws_api_gateway_rest_api.api_fast_food.id
+  stage_name  = "dev"
+}
+
+resource "aws_api_gateway_stage" "dev" {
+  stage_name    = "dev"
+  deployment_id = aws_api_gateway_deployment.api_fast_food_deployment.id
+  rest_api_id   = aws_api_gateway_rest_api.api_fast_food.id
+}
