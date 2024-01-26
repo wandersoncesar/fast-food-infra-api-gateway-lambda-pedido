@@ -76,6 +76,21 @@ resource "aws_api_gateway_integration" "autenticar_cliente" {
   uri                     = "http://cliente-alb-fast-food-app-645897645.us-east-1.elb.amazonaws.com"
 }
 
+resource "aws_api_gateway_deployment" "api_fast_food_deployment" {
+  depends_on = [
+    aws_api_gateway_method.cadastrar_cliente,
+    aws_api_gateway_integration.cadastrar_cliente,
+
+    aws_api_gateway_method.busca_cliente,
+    aws_api_gateway_integration.busca_cliente,
+
+    aws_api_gateway_method.autenticar_cliente,
+    aws_api_gateway_integration.autenticar_cliente,
+    ]
+  rest_api_id = aws_api_gateway_rest_api.api_fast_food.id
+  stage_name = "dev"
+}
+
 resource "aws_api_gateway_authorizer" "custom" {
   name                   = "custom-authorizer"
   rest_api_id            = aws_api_gateway_rest_api.api_fast_food.id
